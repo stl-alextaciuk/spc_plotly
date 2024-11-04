@@ -89,6 +89,7 @@ class XmR:
         sloped (bool): Use sloping approach for limit values
         xmr_function (str): Use "mean" or "median" function for calculating limit values
         chart_height (int): Adjust chart height
+        y_axis_dtick (float): Adjust the y-axis dticks
     """
 
     def __init__(
@@ -105,7 +106,36 @@ class XmR:
         sloped: bool = False,
         xmr_function: str = "mean",
         chart_height: int = None,
+        y_axis_dtick: float = None,
     ) -> None:
+        """
+        Initializes an XmR Chart object.
+
+        Parameters:
+            data (str): Dataframe to use for XmR chart.
+            y_ser_name (int): Name of column containing values to plot on y-axis.
+            x_ser_name (str): Name of column or index containing values to plot on x-axis.
+                Column or index should represent a date, date/time, or a proxy for such
+                (e.g., increasing integer value)
+            x_begin (str): Value of x_ser_name, before which the data is excluded for purposes
+                of calculating limits. If None, minimum value is set.
+            x_cutoff (str): Value of x_ser_name, after which the data is excluded for purposes
+                of calculating limits. If None, maximum value is set.
+            date_part_resolution (str): Resolution of your data, for formatting the x-axis. Valid options:
+                - year
+                - month
+                - day
+                - hour
+                - minute
+                - custom
+            custom_date_part (str): If you choose custom, please specify the d3 format corresponding to your data.
+            title (str): Custom chart title
+            sloped (bool): Use sloping approach for limit values. Only use this if your data
+                is expected to increase over time (e.g., energy prices).
+            xmr_function (str): Use "mean" or "median" function for calculating limit values
+            chart_height (int): Adjust chart height
+        """
+
         self.data = data
         self.xmr_function = xmr_function.lower()
         self.sloped = sloped
@@ -176,6 +206,7 @@ class XmR:
         self.npl_limit_values["xmr_func"] = self.xmr_function
 
         self._height = chart_height
+        self.y_axis_dtick = y_axis_dtick
         self.xmr_chart, self.signals = self._XmR_chart()
 
     def _limits(self) -> tuple[DataFrame, Series, dict, dict]:
@@ -309,6 +340,7 @@ class XmR:
             y_Ser=self._y_Ser,
             mR_data=self.mR_data,
             sloped=self.sloped,
+            y_axis_dtick=self.y_axis_dtick,
         )
         fig_XmR.layout.xaxis = axis_formats.get("x_values")
         fig_XmR.layout.xaxis2 = axis_formats.get("x_mR")

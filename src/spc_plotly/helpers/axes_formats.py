@@ -2,9 +2,32 @@ from pandas import Series
 import plotly.graph_objects as go
 from spc_plotly.utils import rounded_value, rounding_multiple
 
-def _format_xaxis(x_type: str) -> dict:
-    """Format x-axis based on data type"""
+def _format_xaxis(anchor: str, matches: str, showticklabels: bool, x_type: str) -> dict:
+    """
+    X-axis formatter
+
+    Parameters:
+        anchor (str): Axis to anchor on
+        matches (str): Axis to match on
+        showticklabels (bool): Show axis ticklabels
+        x_type (str): Type of data you're charting
+
+    Returns:
+        dict: Axis formatting
+    """
     base_format = {
+        "anchor": anchor,
+        "domain": [0.0, 1.0],
+        "automargin": True,
+        "matches": matches,
+        "showticklabels": showticklabels,
+        "tickformat": "%b\n%Y",
+        "ticklabelmode": "period",
+        "tickangle": 0,
+        "showspikes": True,
+        "spikemode": "across+toaxis",
+        "spikesnap": "cursor",
+        "showline": True,
         "showgrid": True,
         "gridcolor": "lightgray",
         "zeroline": False,
@@ -13,7 +36,9 @@ def _format_xaxis(x_type: str) -> dict:
     if x_type == "date_time":
         base_format.update({
             "type": "date",
-            "tickformat": "%Y-%m-%d"
+            "tickformat": "%Y-%m-%d",
+            "dtick": "M1", #fix this so it's not auto-default
+
         })
     elif x_type == "numeric":
         base_format.update({
@@ -59,7 +84,7 @@ def _format_xaxis(x_type: str) -> dict:
 
 
 def _format_yaxis(
-    anchor: str, title: str, domain: list, range: list, tickformat: str, dtick: int
+    anchor: str, title: str, domain: list, range: list, tickformat: str, dtick: float
 ):
     """
     Y-axis formatter
@@ -82,7 +107,7 @@ def _format_yaxis(
     }
 
 
-def _format_XmR_axes(
+def _format_XmR_axes(  # all dticks here are for the y-axis
     npl_upper: float | list,
     npl_lower: float | list,
     mR_upper: float,
@@ -90,7 +115,8 @@ def _format_XmR_axes(
     mR_data: Series,
     x_type: str,
     sloped: bool,
-) -> dict:
+    y_axis_dtick: float,
+) -> go.Figure:
     """
     Apply axes formats
 
@@ -101,6 +127,7 @@ def _format_XmR_axes(
         y_Ser (Series): Series of y-values
         mR_data (Series): Series of moving range values
         sloped (bool): Use sloping approach for limit values.
+        y_axis_dtick (float): Float for y-axis interval, defaults to auto-selection
 
     Returns:
         dict: Axis formatting
@@ -120,14 +147,14 @@ def _format_XmR_axes(
 
     if sloped:
         value_range = npl_upper[len(npl_upper) - 1][1] - npl_lower[0][1]
-        dtick = rounding_multiple.rounding_multiple(value_range)
+        dtick = y_axis_dtick if y_axis_dtick else rounding_multiple.rounding_multiple(value_range)
         min_range = rounded_value.rounded_value(npl_lower[0][1], dtick)
         max_range = rounded_value.rounded_value(
             npl_upper[len(npl_upper) - 1][1], dtick, "up"
         )
     else:
         value_range = npl_upper - npl_lower
-        dtick = rounding_multiple.rounding_multiple(value_range)
+        dtick = y_axis_dtick if y_axis_dtick else rounding_multiple.rounding_multiple(value_range)
         min_range = min(
             rounded_value.rounded_value(y_Ser.min(), dtick, "down"),
             rounded_value.rounded_value(npl_lower - (value_range * 0.1), dtick, "down"),
@@ -146,7 +173,7 @@ def _format_XmR_axes(
         dtick=dtick,
     )
 
-    dtick = rounding_multiple.rounding_multiple(mR_upper)
+    dtick = y_axis_dtick if y_axis_dtick else rounding_multiple.rounding_multiple(mR_upper)
     max_range = max(
         rounded_value.rounded_value(mR_upper.max(), dtick, "up"),
         rounded_value.rounded_value(mR_data.max() + (mR_data.max() * 0.1), dtick, "up"),
