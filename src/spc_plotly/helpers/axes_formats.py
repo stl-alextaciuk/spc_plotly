@@ -2,13 +2,12 @@ from pandas import Series
 import plotly.graph_objects as go
 from spc_plotly.utils import rounded_value, rounding_multiple
 
-def _format_xaxis(anchor: str, matches: str, showticklabels: bool, x_type: str) -> dict:
+def _format_xaxis(anchor: str, x_type: str, showticklabels=True) -> dict:
     """
     X-axis formatter
 
     Parameters:
         anchor (str): Axis to anchor on
-        matches (str): Axis to match on
         showticklabels (bool): Show axis ticklabels
         x_type (str): Type of data you're charting
 
@@ -19,7 +18,6 @@ def _format_xaxis(anchor: str, matches: str, showticklabels: bool, x_type: str) 
         "anchor": anchor,
         "domain": [0.0, 1.0],
         "automargin": True,
-        "matches": matches,
         "showticklabels": showticklabels,
         "tickformat": "%b\n%Y",
         "ticklabelmode": "period",
@@ -47,55 +45,31 @@ def _format_xaxis(anchor: str, matches: str, showticklabels: bool, x_type: str) 
         })
     else:  # categorical
         base_format.update({
-            "type": "category"
+            "type": "category",
+            "tickangle": 45,
+            "automargin": True  # Ensure there's enough margin for rotated labels
         })
     
     return base_format
-# def _format_xaxis(anchor: str, matches: str, showticklabels: bool):
-#     """
-#     X-axis formatter
-
-#     Parameters:
-#         anchor (str): Axis to anchor on
-#         matches (str): Axis to match on
-#         showticklabels (bool): Show axis ticklabels
-
-#     Returns:
-#         dict: Axis formatting
-#     """
-#     return {
-#         "anchor": anchor,
-#         "domain": [0.0, 1.0],
-#         "automargin": True,
-#         "dtick": "M1",
-#         "matches": matches,
-#         "showticklabels": showticklabels,
-#         "tickformat": "%b\n%Y",
-#         "ticklabelmode": "period",
-#         "tickangle": 0,
-#         "showspikes": True,
-#         "spikemode": "across+toaxis",
-#         "spikesnap": "cursor",
-#         "showline": True,
-#         "showgrid": True,
-#         "spikedash": "solid",
-#         "spikecolor": "lightgreen",
-#     }
-
 
 def _format_yaxis(
     anchor: str, title: str, domain: list, range: list, tickformat: str, dtick: float
 ):
     """
-    Y-axis formatter
+    Formats the y-axis configuration for a Plotly chart with specified parameters.
 
     Parameters:
-        anchor (str): Axis to anchor on
-        matches (str): Axis to match on
-        showticklabels (bool): Show axis ticklabels
+        anchor (str): The x-axis to anchor this y-axis to (e.g., 'x', 'x2')
+        title (str): The title text to display for the y-axis
+        domain (list): A list of two floats defining the axis domain range [start, end]
+            where values must be between 0 and 1
+        range (list): A list of two values defining the axis range [min, max]
+        tickformat (str): The format string for tick labels (e.g., "0" for integers)
+        dtick (float): The interval between ticks on the axis
 
     Returns:
-        dict: Axis formatting
+        dict: A dictionary containing all the formatting specifications for the y-axis
+            that can be used in a Plotly figure layout
     """
     return {
         "anchor": anchor,
@@ -133,16 +107,24 @@ def _format_XmR_axes(  # all dticks here are for the y-axis
         dict: Axis formatting
     """
 
-    xaxis_values = _format_xaxis(x_type)
+     # Format x-axis for values chart
+    xaxis_values = _format_xaxis(
+        anchor="y",
+        x_type=x_type,
+        showticklabels=True
+    )
     xaxis_values.update({
         "domain": [0, 1],
-        "anchor": "y"
     })
     
-    xaxis_mR = _format_xaxis(x_type)
+    # Format x-axis for moving range chart
+    xaxis_mR = _format_xaxis(
+        anchor="y2",
+        x_type=x_type,
+        showticklabels=True
+    )
     xaxis_mR.update({
         "domain": [0, 1],
-        "anchor": "y2"
     })
 
     if sloped:
@@ -174,9 +156,11 @@ def _format_XmR_axes(  # all dticks here are for the y-axis
     )
 
     dtick = y_axis_dtick if y_axis_dtick else rounding_multiple.rounding_multiple(mR_upper)
+    mR_value_range = mR_upper  # Since mR chart always starts at 0
+    mR_dtick = y_axis_dtick if y_axis_dtick else rounding_multiple.rounding_multiple(mR_value_range * 4)  # Divide by 4 to get ~4-5 tick marks
     max_range = max(
-        rounded_value.rounded_value(mR_upper.max(), dtick, "up"),
-        rounded_value.rounded_value(mR_data.max() + (mR_data.max() * 0.1), dtick, "up"),
+        rounded_value.rounded_value(mR_upper, mR_dtick, "up"),
+        rounded_value.rounded_value(mR_data.max() + (mR_data.max() * 0.1), mR_dtick, "up"),
     )
 
     yaxis_mR = _format_yaxis(
@@ -185,7 +169,7 @@ def _format_XmR_axes(  # all dticks here are for the y-axis
         domain=[0.0, 0.3],
         range=[0, max_range],
         tickformat="0",
-        dtick=dtick,
+        dtick=mR_dtick,  # Use the new dtick calculation
     )
 
     return {

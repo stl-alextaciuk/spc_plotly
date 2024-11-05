@@ -12,22 +12,6 @@ from spc_plotly.utils import calc_xmr_func
 from tests import test_xmr
 from plotly.graph_objects import Figure
 from plotly.subplots import make_subplots
-
-date_parts = {
-    "year": "%Y",
-    "month": "%Y-%m",
-    "day": "%Y-%m-%d",
-    "hour": "%Y-%m-%d %H",
-    "minute": "%Y-%m-%d %H:%M",
-    "custom": None,
-}
-
-XmR_constants = {
-    "mean": {"mR_Upper": 3.268, "npl_Constant": 2.660},
-    "median": {"mR_Upper": 3.865, "npl_Constant": 3.145},
-}
-
-
 from pandas import DataFrame, Series, to_datetime
 from numpy import abs
 from spc_plotly.helpers import (
@@ -41,6 +25,12 @@ from spc_plotly.helpers import (
 from spc_plotly.utils import calc_xmr_func, validate_sequence
 from tests import test_xmr
 from plotly.graph_objects import Figure
+
+
+XmR_constants = {
+    "mean": {"mR_Upper": 3.268, "npl_Constant": 2.660},
+    "median": {"mR_Upper": 3.865, "npl_Constant": 3.145},
+}
 
 date_parts = {
     "year": "%Y",
@@ -309,12 +299,16 @@ class XmR:
                             of a "short run", which is defined as 3 out of 4 points closer
                             to the limit lines than they are to the mean/median line.
         """
+        if self._height is None:
+            self._height = 600
+
         # Create figure with secondary y-axis
         fig_XmR = make_subplots(
             rows=2, 
             cols=1,
             subplot_titles=(self._title, "Moving Range Chart"),
-            vertical_spacing=0.15
+            vertical_spacing=0.15,
+            row_heights=[0.7,0.3]  #does nothing anyways
         )
 
         # Create base traces

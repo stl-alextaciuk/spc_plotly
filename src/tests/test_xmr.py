@@ -125,3 +125,6 @@ def test_categorical_sequence():
             x_type='categorical'
         )
 
+def test_unique_x_values(data, x_ser_name):
+    if len(data[x_ser_name].unique()) != len(data):
+        raise ValueError(f"All x values must be unique. Please inspect {x_ser_name} for duplicates.")
