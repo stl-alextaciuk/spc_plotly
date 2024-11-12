@@ -20,6 +20,9 @@ def rounded_value(
     if rounding_direction not in ["up", "down"]:
         raise "rounding direction must be 'up' or 'down'"
 
+    if isinstance(value, list):
+        value = max(value)
+
     if multiple >= 1:
         if rounding_direction == "down":
             return int(floor(value / multiple) * multiple)

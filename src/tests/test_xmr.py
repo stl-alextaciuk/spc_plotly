@@ -125,6 +125,11 @@ def test_categorical_sequence():
             x_type='categorical'
         )
 
+def test_sorted(breaks):
+    if breaks != sorted(breaks) or breaks != sorted(breaks, reverse=True):
+        raise ValueError(f"Period breaks must be in order. See {breaks} out of order values.") 
+
+
 def test_unique_x_values(data, x_ser_name):
     if len(data[x_ser_name].unique()) != len(data):
         raise ValueError(f"All x values must be unique. Please inspect {x_ser_name} for duplicates.")

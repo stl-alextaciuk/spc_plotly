@@ -16,6 +16,9 @@ def rounding_multiple(value: float, rounding_direction: str = "down") -> int:
 
     if rounding_direction not in ["up", "down"]:
         raise "rounding direction must be 'up' or 'down'"
+        
+    if isinstance(value, list):
+        value = max(value)
 
     orders_of_magnitude = log10(value) - 1
     rounding_multiple = (10 ** floor(orders_of_magnitude)) / 2

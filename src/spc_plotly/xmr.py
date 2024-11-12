@@ -1,4 +1,5 @@
 from pandas import DataFrame, Series, to_datetime
+import pandas as pd
 from numpy import abs
 from spc_plotly.helpers import (
     axes_formats,
@@ -8,23 +9,10 @@ from spc_plotly.helpers import (
     signals,
     menus,
 )
-from spc_plotly.utils import calc_xmr_func
 from tests import test_xmr
 from plotly.graph_objects import Figure
 from plotly.subplots import make_subplots
-from pandas import DataFrame, Series, to_datetime
-from numpy import abs
-from spc_plotly.helpers import (
-    axes_formats,
-    base_traces,
-    limit_lines,
-    annotations,
-    signals,
-    menus,
-)
 from spc_plotly.utils import calc_xmr_func, validate_sequence
-from tests import test_xmr
-from plotly.graph_objects import Figure
 
 
 XmR_constants = {
@@ -47,10 +35,6 @@ x_type_options = {
     "categorical": None
 }
 
-XmR_constants = {
-    "mean": {"mR_Upper": 3.268, "npl_Constant": 2.660},
-    "median": {"mR_Upper": 3.865, "npl_Constant": 3.145},
-}
 
 class XmR:
     """
@@ -61,6 +45,7 @@ class XmR:
         y_ser_name (str): Name of column containing values to plot on y-axis.
         x_ser_name (str): Name of column containing ordered values to plot on x-axis.
             Can be temporal (dates), numerical, or categorical.
+        period_breaks (list): List of periods to break the chart on
         x_type (str): Type of x-axis data. Valid options:
             - date_time (dates and times)
             - numeric (ordered numbers)
@@ -87,6 +72,7 @@ class XmR:
         data: DataFrame,
         y_ser_name: str,
         x_ser_name: str,
+        period_breaks: list[str] = None,
         x_type: str = "date_time",
         date_part_resolution: str = "month",
         custom_date_part: str = "",
@@ -130,6 +116,11 @@ class XmR:
         self.xmr_function = xmr_function.lower()
         self.sloped = sloped
         self.x_type = x_type.lower()
+        self.period_breaks = period_breaks
+        if period_breaks:
+            if x_type == "date_time":  # Convert breaks to datetime if using date_time x_type
+                self.period_breaks = [pd.to_datetime(d) for d in period_breaks]
+            self.period_breaks.sort()
         
         # Validate and process x-axis type
         test_xmr.test_x_type(self.x_type, x_type_options)
@@ -210,10 +201,62 @@ class XmR:
                 - dict: Contains the moving range upper limit and mean/median value
                 - dict: Contains the natural process limits and mean/median value
         """
+        if not self.period_breaks:
+            return self._calculate_period_limits(self.data)
+            
+#test for duplicaters too 
+        test_xmr.test_sorted(self.period_breaks)
+        
+        # Calculate period ranges
+        self.period_ranges = []
+        start_date = self.x_begin or self._x_Ser.min()
+        end_date = self.x_cutoff or self._x_Ser.max()
+        
+        # probably a better way to do this but basically creates the period lists if/else they are are dates
+        if self.x_type == 'date_time':
+            self.period_ranges.append((pd.to_datetime(start_date), pd.to_datetime(self.period_breaks[0])))
+            for i in range(len(self.period_breaks) - 1):
+                self.period_ranges.append((pd.to_datetime(self.period_breaks[i]), pd.to_datetime(self.period_breaks[i + 1])))
+            self.period_ranges.append((pd.to_datetime(self.period_breaks[-1]), pd.to_datetime(end_date)))
+            self._x_Ser = pd.to_datetime(self._x_Ser)
+        else:
+            self.period_ranges.append((start_date, self.period_breaks[0]))
+            for i in range(len(self.period_breaks) - 1):
+                self.period_ranges.append((self.period_breaks[i], self.period_breaks[i + 1]))
+            self.period_ranges.append((self.period_breaks[-1], end_date))
+        
+        # Calculate limits for each period
+        period_results = []
+        for start, end in self.period_ranges:
+            period_data = self.data.loc[
+                int(self._x_Ser[self._x_Ser == start].index[0]) : int(self._x_Ser[self._x_Ser == end].index[0])
+            ]
+            period_results.append(self._calculate_period_limits(period_data))
+        
+        # Combine results
+        combined_data = pd.concat([r[0] for r in period_results])
+        combined_mR = pd.concat([r[1] for r in period_results])
+        
+        # Create lists of limit values for each period
+        mR_limits = {
+            "mR_xmr_func": [r[2]["mR_xmr_func"] for r in period_results],
+            "mR_upper_limit": [r[2]["mR_upper_limit"] for r in period_results]
+        }
+        
+        npl_limits = {
+            "y_xmr_func": [r[3]["y_xmr_func"] for r in period_results],
+            "npl_upper_limit": [r[3]["npl_upper_limit"] for r in period_results],
+            "npl_lower_limit": [r[3]["npl_lower_limit"] for r in period_results]
+        }
+        
+        return combined_data, combined_mR, mR_limits, npl_limits
 
-        data_for_limits = self.data.loc[
-            (self._x_Ser >= self.x_begin) & (self._x_Ser <= self.x_cutoff)
-        ]
+    def _calculate_period_limits(self, period_data: DataFrame) -> tuple:
+        """
+        Calculate limits for a single period
+        """
+        # Use period_data instead of self.data
+        data_for_limits = period_data
 
         mR_data_for_limits = abs(
             data_for_limits[self._y_ser_name]
@@ -330,19 +373,20 @@ class XmR:
             npl_upper=self.npl_limit_values.get("npl_upper_limit"),
             npl_lower=self.npl_limit_values.get("npl_lower_limit"),
             mR_upper=self.mR_limit_values.get("mR_upper_limit"),
-            x_type=self.x_type,
             y_Ser=self._y_Ser,
             mR_data=self.mR_data,
+            x_type=self.x_type,
             sloped=self.sloped,
             y_axis_dtick=self.y_axis_dtick,
         )
         fig_XmR.layout.xaxis = axis_formats.get("x_values")
-        fig_XmR.layout.xaxis2 = axis_formats.get("x_mR")
+        # fig_XmR.layout.xaxis2 = axis_formats.get("x_mR")
         fig_XmR.layout.yaxis = axis_formats.get("y_values")
         fig_XmR.layout.yaxis2 = axis_formats.get("y_mR")
 
         limit_line_shapes = limit_lines._create_limit_lines(
             data=self.data,
+            period_ranges=self.period_ranges,
             y_xmr_func=self.npl_limit_values.get("y_xmr_func"),
             npl_upper=self.npl_limit_values.get("npl_upper_limit"),
             npl_lower=self.npl_limit_values.get("npl_lower_limit"),

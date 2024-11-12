@@ -10,6 +10,7 @@ def _anomalies(
     npl_lower: float | list,
     mR_upper: float,
     sloped: bool,
+    period_ranges: list = None
 ) -> tuple:
     """
     Identifies all points that lie outside of the natural process limits

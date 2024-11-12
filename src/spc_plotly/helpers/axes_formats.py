@@ -81,10 +81,10 @@ def _format_yaxis(
     }
 
 
-def _format_XmR_axes(  # all dticks here are for the y-axis
+def _format_XmR_axes(
     npl_upper: float | list,
     npl_lower: float | list,
-    mR_upper: float,
+    mR_upper: float | list,
     y_Ser: Series,
     mR_data: Series,
     x_type: str,
@@ -106,27 +106,6 @@ def _format_XmR_axes(  # all dticks here are for the y-axis
     Returns:
         dict: Axis formatting
     """
-
-     # Format x-axis for values chart
-    xaxis_values = _format_xaxis(
-        anchor="y",
-        x_type=x_type,
-        showticklabels=True
-    )
-    xaxis_values.update({
-        "domain": [0, 1],
-    })
-    
-    # Format x-axis for moving range chart
-    xaxis_mR = _format_xaxis(
-        anchor="y2",
-        x_type=x_type,
-        showticklabels=True
-    )
-    xaxis_mR.update({
-        "domain": [0, 1],
-    })
-
     if sloped:
         value_range = npl_upper[len(npl_upper) - 1][1] - npl_lower[0][1]
         dtick = y_axis_dtick if y_axis_dtick else rounding_multiple.rounding_multiple(value_range)
@@ -135,16 +114,31 @@ def _format_XmR_axes(  # all dticks here are for the y-axis
             npl_upper[len(npl_upper) - 1][1], dtick, "up"
         )
     else:
-        value_range = npl_upper - npl_lower
-        dtick = y_axis_dtick if y_axis_dtick else rounding_multiple.rounding_multiple(value_range)
-        min_range = min(
-            rounded_value.rounded_value(y_Ser.min(), dtick, "down"),
-            rounded_value.rounded_value(npl_lower - (value_range * 0.1), dtick, "down"),
-        )
-        max_range = max(
-            rounded_value.rounded_value(y_Ser.max(), dtick, "up"),
-            rounded_value.rounded_value(npl_upper + (value_range * 0.1), dtick, "up"),
-        )
+        # Handle both single values and lists
+        if isinstance(npl_upper, list):
+            # For multiple periods, use the overall min/max
+            value_range = max(npl_upper) - min(npl_lower)
+            dtick = y_axis_dtick if y_axis_dtick else rounding_multiple.rounding_multiple(value_range)
+            min_range = min(
+                rounded_value.rounded_value(y_Ser.min(), dtick, "down"),
+                rounded_value.rounded_value(min(npl_lower) - (value_range * 0.1), dtick, "down"),
+            )
+            max_range = max(
+                rounded_value.rounded_value(y_Ser.max(), dtick, "up"),
+                rounded_value.rounded_value(max(npl_upper) + (value_range * 0.1), dtick, "up"),
+            )
+        else:
+            # Original single-period logic
+            value_range = npl_upper - npl_lower
+            dtick = y_axis_dtick if y_axis_dtick else rounding_multiple.rounding_multiple(value_range)
+            min_range = min(
+                rounded_value.rounded_value(y_Ser.min(), dtick, "down"),
+                rounded_value.rounded_value(npl_lower - (value_range * 0.1), dtick, "down"),
+            )
+            max_range = max(
+                rounded_value.rounded_value(y_Ser.max(), dtick, "up"),
+                rounded_value.rounded_value(npl_upper + (value_range * 0.1), dtick, "up"),
+            )
 
     yaxis_values = _format_yaxis(
         anchor="x",
@@ -153,6 +147,11 @@ def _format_XmR_axes(  # all dticks here are for the y-axis
         range=[min_range, max_range],
         tickformat="0",
         dtick=dtick,
+    )
+
+    xaxis_values = _format_xaxis(
+        anchor="y", 
+        x_type=x_type, 
     )
 
     dtick = y_axis_dtick if y_axis_dtick else rounding_multiple.rounding_multiple(mR_upper)
@@ -174,7 +173,7 @@ def _format_XmR_axes(  # all dticks here are for the y-axis
 
     return {
         "x_values": xaxis_values,
-        "x_mR": xaxis_mR,
+        # "x_mR": xaxis_mR,
         "y_values": yaxis_values,
         "y_mR": yaxis_mR,
     }
