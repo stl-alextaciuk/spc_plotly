@@ -121,6 +121,8 @@ class XmR:
             if x_type == "date_time":  # Convert breaks to datetime if using date_time x_type
                 self.period_breaks = [pd.to_datetime(d) for d in period_breaks]
             self.period_breaks.sort()
+        else:
+            self.period_ranges = None
         
         # Validate and process x-axis type
         test_xmr.test_x_type(self.x_type, x_type_options)
@@ -202,7 +204,7 @@ class XmR:
                 - dict: Contains the natural process limits and mean/median value
         """
         if self.period_breaks == None:
-            self.period_ranges = None
+            # self.period_ranges = None
             return self._calculate_period_limits(self.data)
             
 #test for duplicaters too 
@@ -393,6 +395,7 @@ class XmR:
             mR=self.mR_limit_values.get("mR_xmr_func"),
             mR_upper=self.mR_limit_values.get("mR_upper_limit"),
             sloped=self.sloped,
+            period_ranges=self.period_ranges,
         )
         fig_XmR.layout.shapes = limit_line_shapes
 
