@@ -43,11 +43,26 @@ def _anomalies(
             if not (upper is None and lower is None)
         ]
     else:
-        anomaly_points = [
-            (x, y, "High" if y >= npl_upper else "Low")
-            for x, y in zip(fig_data[0].x, fig_data[0].y)
-            if y >= npl_upper or y <= npl_lower
-        ]
+        if isinstance(npl_upper, list):
+            # Handle multiple periods
+            anomaly_points = []
+            current_period = 0
+            for x, y in zip(fig_data[0].x, fig_data[0].y):
+                # Find which period this point belongs to
+                if period_ranges and current_period < len(period_ranges) - 1:
+                    if x >= period_ranges[current_period + 1][0]:
+                        current_period += 1
+                
+                if y >= npl_upper[current_period] or y <= npl_lower[current_period]:
+                    anomaly_points.append(
+                        (x, y, "High" if y >= npl_upper[current_period] else "Low")
+                    )
+        else:
+            anomaly_points = [
+                (x, y, "High" if y >= npl_upper else "Low")
+                for x, y in zip(fig_data[0].x, fig_data[0].y)
+                if y >= npl_upper or y <= npl_lower
+            ]
 
     fig.add_trace(
         Scatter(
@@ -62,9 +77,21 @@ def _anomalies(
         col=1,
     )
 
-    mR_anomaly_points = [
-        (x, y) for x, y in zip(fig_data[1].x, fig_data[1].y) if y >= mR_upper
-    ]
+    # Handle mR anomalies
+    if isinstance(mR_upper, list):
+        mR_anomaly_points = []
+        current_period = 0
+        for x, y in zip(fig_data[1].x, fig_data[1].y):
+            if period_ranges and current_period < len(period_ranges) - 1:
+                if x >= period_ranges[current_period + 1][0]:
+                    current_period += 1
+            
+            if y >= mR_upper[current_period]:
+                mR_anomaly_points.append((x, y))
+    else:
+        mR_anomaly_points = [
+            (x, y) for x, y in zip(fig_data[1].x, fig_data[1].y) if y >= mR_upper
+        ]
 
     fig.add_trace(
         Scatter(
@@ -94,6 +121,7 @@ def _short_run_test(
     line_type: str = "longdashdot",
     opacity: float = 0.2,
     shape_buffer_pct: float = 0.05,
+    period_ranges: list = None,
 ) -> tuple:
     """
     Identifies "short runs", defined as 3 out of 4 consecutive points closer to a limit
@@ -171,10 +199,33 @@ def _short_run_test(
                 pass
 
     else:
-        upper_midrange = y_xmr_func + ((npl_upper - y_xmr_func) / 2)
-        lower_midrange = y_xmr_func - ((y_xmr_func - npl_lower) / 2)
-        run_test_upper = y_values > upper_midrange
-        run_test_lower = y_values < lower_midrange
+        # Handle both single and multiple periods
+        if isinstance(y_xmr_func, list):
+            # Create arrays for comparison based on period ranges
+            y_func_values = []
+            upper_midrange_values = []
+            lower_midrange_values = []
+            current_period = 0
+            
+            for x in x_values:
+                if period_ranges and current_period < len(period_ranges) - 1:
+                    if x >= period_ranges[current_period + 1][0]:
+                        current_period += 1
+                        
+                curr_y_xmr = y_xmr_func[current_period]
+                curr_upper = npl_upper[current_period]
+                curr_lower = npl_lower[current_period]
+                
+                upper_midrange_values.append(curr_y_xmr + ((curr_upper - curr_y_xmr) / 2))
+                lower_midrange_values.append(curr_y_xmr - ((curr_y_xmr - curr_lower) / 2))
+            
+            run_test_upper = y_values > array(upper_midrange_values)
+            run_test_lower = y_values < array(lower_midrange_values)
+        else:
+            upper_midrange = y_xmr_func + ((npl_upper - y_xmr_func) / 2)
+            lower_midrange = y_xmr_func - ((y_xmr_func - npl_lower) / 2)
+            run_test_upper = y_values > upper_midrange
+            run_test_lower = y_values < lower_midrange
 
         shape_buffer = (y_range[1] - y_range[0]) * shape_buffer_pct
 
@@ -260,6 +311,7 @@ def _long_run_test(
     line_type: str = "longdashdot",
     opacity: float = 0.2,
     shape_buffer_pct: float = 0.05,
+    period_ranges: list = None
 ) -> tuple:
     """
     Identifies "long runs", defined as 8 consecutive points above or below the mid line.
@@ -317,8 +369,22 @@ def _long_run_test(
 
             paths.append(path_build_list)
     else:
-        run_test_upper = y_values > y_xmr_func
-        run_test_lower = y_values < y_xmr_func
+        # Handle both single and multiple periods
+        if isinstance(y_xmr_func, list):
+            # Create arrays for comparison based on period ranges
+            y_func_values = []
+            current_period = 0
+            for x in x_values:
+                if period_ranges and current_period < len(period_ranges) - 1:
+                    if x >= period_ranges[current_period + 1][0]:
+                        current_period += 1
+                y_func_values.append(y_xmr_func[current_period])
+            
+            run_test_upper = y_values > array(y_func_values)
+            run_test_lower = y_values < array(y_func_values)
+        else:
+            run_test_upper = y_values > y_xmr_func
+            run_test_lower = y_values < y_xmr_func
 
         for i, el in enumerate(y_values):
             trailing_sum_upper = numpy_sum(run_test_upper[max(0, i - 7) : i + 1])
