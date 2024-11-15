@@ -126,7 +126,7 @@ def test_categorical_sequence():
         )
 
 def test_sorted(breaks):
-    if breaks != sorted(breaks) or breaks != sorted(breaks, reverse=True):
+    if breaks != sorted(breaks) and breaks != sorted(breaks, reverse=True):
         raise ValueError(f"Period breaks must be in order. See {breaks} out of order values.") 
 
 

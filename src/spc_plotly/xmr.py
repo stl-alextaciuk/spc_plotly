@@ -121,6 +121,8 @@ class XmR:
             if x_type == "date_time":  # Convert breaks to datetime if using date_time x_type
                 self.period_breaks = [pd.to_datetime(d) for d in period_breaks]
             self.period_breaks.sort()
+        else:
+            self.period_ranges = None
         
         # Validate and process x-axis type
         test_xmr.test_x_type(self.x_type, x_type_options)
@@ -201,7 +203,8 @@ class XmR:
                 - dict: Contains the moving range upper limit and mean/median value
                 - dict: Contains the natural process limits and mean/median value
         """
-        if not self.period_breaks:
+        if self.period_breaks == None:
+            # self.period_ranges = None
             return self._calculate_period_limits(self.data)
             
 #test for duplicaters too 
@@ -386,13 +389,13 @@ class XmR:
 
         limit_line_shapes = limit_lines._create_limit_lines(
             data=self.data,
-            period_ranges=self.period_ranges,
             y_xmr_func=self.npl_limit_values.get("y_xmr_func"),
             npl_upper=self.npl_limit_values.get("npl_upper_limit"),
             npl_lower=self.npl_limit_values.get("npl_lower_limit"),
             mR=self.mR_limit_values.get("mR_xmr_func"),
             mR_upper=self.mR_limit_values.get("mR_upper_limit"),
             sloped=self.sloped,
+            period_ranges=self.period_ranges,
         )
         fig_XmR.layout.shapes = limit_line_shapes
 
@@ -422,6 +425,7 @@ class XmR:
             x_type=self.x_type,
             y_xmr_func=self.npl_limit_values.get("y_xmr_func"),
             sloped=self.sloped,
+            period_ranges=self.period_ranges,
         )
 
         short_run_shapes, short_runs = signals._short_run_test(
@@ -431,6 +435,7 @@ class XmR:
             npl_lower=self.npl_limit_values.get("npl_lower_limit"),
             y_xmr_func=self.npl_limit_values.get("y_xmr_func"),
             sloped=self.sloped,
+            period_ranges=self.period_ranges,
         )
 
         fig_XmR = menus._menu(
