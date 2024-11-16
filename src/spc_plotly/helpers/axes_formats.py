@@ -153,10 +153,12 @@ def _format_XmR_axes(
         anchor="y", 
         x_type=x_type, 
     )
-
     dtick = y_axis_dtick if y_axis_dtick else rounding_multiple.rounding_multiple(mR_upper)
     mR_value_range = mR_upper  # Since mR chart always starts at 0
-    mR_dtick = y_axis_dtick if y_axis_dtick else rounding_multiple.rounding_multiple(mR_value_range * 4)  # Divide by 4 to get ~4-5 tick marks
+    if isinstance(mR_value_range, list):
+        mR_dtick = y_axis_dtick if y_axis_dtick else rounding_multiple.rounding_multiple(max(mR_value_range)*2)
+    else:
+        mR_dtick = y_axis_dtick if y_axis_dtick else rounding_multiple.rounding_multiple(mR_value_range*2)
     max_range = max(
         rounded_value.rounded_value(mR_upper, mR_dtick, "up"),
         rounded_value.rounded_value(mR_data.max() + (mR_data.max() * 0.1), mR_dtick, "up"),

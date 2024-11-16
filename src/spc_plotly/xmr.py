@@ -184,6 +184,12 @@ class XmR:
             self.npl_limit_values,
         ) = self._limits()
 
+        # get the indexes of the period ranges
+        if self.period_ranges:
+            self.period_ranges_index = []
+            for start, end in self.period_ranges:
+                self.period_ranges_index.append((int(self._x_Ser[self._x_Ser == start].index[0]), int(self._x_Ser[self._x_Ser == end].index[0])))
+
         # Add selected function to mR and npl dictionaries for reference
         self.mR_limit_values["xmr_func"] = self.xmr_function
         self.npl_limit_values["xmr_func"] = self.xmr_function
@@ -204,7 +210,6 @@ class XmR:
                 - dict: Contains the natural process limits and mean/median value
         """
         if self.period_breaks == None:
-            # self.period_ranges = None
             return self._calculate_period_limits(self.data)
             
 #test for duplicaters too 
@@ -261,6 +266,7 @@ class XmR:
         # Use period_data instead of self.data
         data_for_limits = period_data
 
+        # Calculate moving range data for the limits
         mR_data_for_limits = abs(
             data_for_limits[self._y_ser_name]
             - data_for_limits[self._y_ser_name].shift(1)
@@ -307,7 +313,7 @@ class XmR:
 
             return (
                 data_for_limits,
-                abs(self.data[self._y_ser_name] - self.data[self._y_ser_name].shift(1)),
+                mR_data_for_limits,  # Use the calculated moving range for the limits
                 {"mR_xmr_func": mR_xmr_func, "mR_upper_limit": mR_upper},
                 {
                     "y_xmr_func": sloped_path,
@@ -321,7 +327,7 @@ class XmR:
 
             return (
                 data_for_limits,
-                abs(self.data[self._y_ser_name] - self.data[self._y_ser_name].shift(1)),
+                mR_data_for_limits,  # Use the calculated moving range for the limits
                 {"mR_xmr_func": mR_xmr_func, "mR_upper_limit": mR_upper},
                 {
                     "y_xmr_func": y_xmr_func,
@@ -357,12 +363,28 @@ class XmR:
             row_heights=[0.7,0.3]  #does nothing anyways
         )
 
+        self.middle = []
+        self.middle_mr = []
+        for i, value in enumerate(self.data[self._y_ser_name]):
+            if self.period_ranges:
+                for start, end in self.period_ranges_index:
+                    if start <= i <= end:
+                        self.middle.append(self.npl_limit_values.get("y_xmr_func")[self.period_ranges_index.index((start, end))])
+                        self.middle_mr.append(self.mR_limit_values.get("mR_xmr_func")[self.period_ranges_index.index((start, end))])
+                        break
+            else:
+                self.middle.append(self.npl_limit_values.get("y_xmr_func"))
+                self.middle_mr.append(self.mR_limit_values.get("mR_xmr_func"))
+        
         # Create base traces
         traces = base_traces._create_base_traces(
             x_Ser=self._x_Ser,
             y_Ser=self._y_Ser,
             mR_data=self.mR_data,
-            x_type=self.x_type
+            x_type=self.x_type,
+            middle=self.middle,
+            middle_mr=self.middle_mr,
+            middle_type=self.xmr_function,
         )
 
         # Add traces to subplots
@@ -409,6 +431,7 @@ class XmR:
             npl_lower=self.npl_limit_values.get("npl_lower_limit"),
             y_name=self._y_ser_name,
             sloped=self.sloped,
+            # period_ranges=self.period_ranges,
         )
         fig_XmR.layout.annotations = limit_line_annotations
 
@@ -418,6 +441,7 @@ class XmR:
             npl_lower=self.npl_limit_values.get("npl_lower_limit"),
             mR_upper=self.mR_limit_values.get("mR_upper_limit"),
             sloped=self.sloped,
+            period_ranges=self.period_ranges,
         )
 
         long_run_shapes, long_runs = signals._long_run_test(

@@ -353,11 +353,23 @@ def _long_run_test(
         run_test_lower = y_values < array(y_func_values)
 
         for i, el in enumerate(y_values):
-            trailing_sum_upper = numpy_sum(run_test_upper[max(0, i - 7) : i + 1])
-            trailing_sum_lower = numpy_sum(run_test_lower[max(0, i - 7) : i + 1])
+            # Check if we have enough points to look back 7 positions
+            if i >= 7:
+                trailing_sum_upper = numpy_sum(run_test_upper[i - 7 : i + 1])
+                trailing_sum_lower = numpy_sum(run_test_lower[i - 7 : i + 1])
+            else:
+                # For the first 7 points, check all points up to current position
+                trailing_sum_upper = numpy_sum(run_test_upper[0 : i + 1])
+                trailing_sum_lower = numpy_sum(run_test_lower[0 : i + 1])
+                # Only consider it a run if we have 8 points
+                if i + 1 < 8:
+                    continue
+
             if trailing_sum_upper >= 8 or trailing_sum_lower >= 8:
+                # If we're in the first 7 points, include all points from start
+                start_idx = max(0, i - 7)
                 long_runs.append(
-                    zip(x_values[max(0, i - 7) : i + 1], y_values[max(0, i - 7) : i + 1])
+                    zip(x_values[start_idx : i + 1], y_values[start_idx : i + 1])
                 )
 
         paths = []
@@ -387,18 +399,37 @@ def _long_run_test(
             run_test_lower = y_values < y_xmr_func
 
         for i, el in enumerate(y_values):
-            trailing_sum_upper = numpy_sum(run_test_upper[max(0, i - 7) : i + 1])
-            trailing_sum_lower = numpy_sum(run_test_lower[max(0, i - 7) : i + 1])
+            # Check if we have enough points to look back 7 positions
+            if i >= 7:
+                trailing_sum_upper = numpy_sum(run_test_upper[i - 7 : i + 1])
+                trailing_sum_lower = numpy_sum(run_test_lower[i - 7 : i + 1])
+            else:
+                # For the first 7 points, check all points up to current position
+                trailing_sum_upper = numpy_sum(run_test_upper[0 : i + 1])
+                trailing_sum_lower = numpy_sum(run_test_lower[0 : i + 1])
+                # Only consider it a run if we have 8 points
+                if i + 1 < 8:
+                    continue
+
             if trailing_sum_upper >= 8 or trailing_sum_lower >= 8:
+                # If we're in the first 7 points, include all points from start
+                start_idx = max(0, i - 7)
                 long_runs.append(
-                    zip(x_values[max(0, i - 7) : i + 1], y_values[max(0, i - 7) : i + 1])
+                    zip(x_values[start_idx : i + 1], y_values[start_idx : i + 1])
                 )
 
         paths = []
         for run in long_runs:
             path_build_list = []
             for i, (d, v) in enumerate(run):
-                path_build_list.append((d, v, "High" if v >= y_xmr_func else "Low"))
+                if isinstance(y_xmr_func, list):
+                    current_period = 0
+                    for period_start, period_end in period_ranges:
+                        if d >= period_end:
+                            current_period += 1
+                    path_build_list.append((d, v, "High" if v >= y_xmr_func[current_period] else "Low"))
+                else:
+                    path_build_list.append((d, v, "High" if v >= y_xmr_func else "Low"))
 
             paths.append(path_build_list)
 
