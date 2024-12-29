@@ -114,7 +114,7 @@ class XmR:
 
         self.data = data
         self.xmr_function = xmr_function.lower()
-        self.sloped = sloped
+        self.sloped = False  # Removing this for now
         self.x_type = x_type.lower()
         self.period_breaks = period_breaks
         if period_breaks:
@@ -123,6 +123,7 @@ class XmR:
             self.period_breaks.sort()
         else:
             self.period_ranges = None
+            self.period_ranges_index = None
         
         # Validate and process x-axis type
         test_xmr.test_x_type(self.x_type, x_type_options)
@@ -443,13 +444,13 @@ class XmR:
             sloped=self.sloped,
             period_ranges=self.period_ranges,
         )
-
         long_run_shapes, long_runs = signals._long_run_test(
             fig=fig_XmR,
             x_type=self.x_type,
             y_xmr_func=self.npl_limit_values.get("y_xmr_func"),
             sloped=self.sloped,
             period_ranges=self.period_ranges,
+            period_ranges_index=self.period_ranges_index,
         )
 
         short_run_shapes, short_runs = signals._short_run_test(

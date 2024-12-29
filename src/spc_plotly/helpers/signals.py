@@ -122,182 +122,146 @@ def _short_run_test(
     opacity: float = 0.2,
     shape_buffer_pct: float = 0.05,
     period_ranges: list = None,
+    period_ranges_index: list = None,
 ) -> tuple:
-    """
-    Identifies "short runs", defined as 3 out of 4 consecutive points closer to a limit
-        line than the mid line.
-
-    Parameters:
-        fig (Figure): Passed in Figure object
-        npl_upper (float|list): Upper process limit. If sloped is True, this is a list of tuples.
-        npl_lower (float|list): Lower process limit. If sloped is True, this is a list of tuples.
-        y_xmr_func (float|list): Upper moving range limit. If sloped is True, this is a list of tuples.
-        sloped (bool): Use sloping approach for limit values.
-        fill_color (str): Fill color of shape
-        line_color (str): Line color of shape
-        line_width (int): Line width of shape border
-        line_type (str): Line type of shape border
-        opacity (float): Opacity of shape fill
-        shape_buffer_pct (float): % buffer to use for shape build. For example:
-            If y-value = 100, a shape buffer of 5% would mean the lower and upper values
-            of the shape for that y-value are [95, 105].
-
-    Returns:
-        list[dict]: List of dictionaries that represent a shape for each short run that will
-            highlight the area of the chart containing the short run.
-        list[list]: List of lists, each sublist is a path, containing a tuple that represents
-            each point in the long run.
-    """
-    # Detect 8 consecutive points on one side of center line
     fig_data = fig.data
     x_values = [el for el in fig_data[0].x]
     y_values = fig_data[0].y
+    y_range = fig.layout.yaxis.range
+    shape_buffer = (y_range[1] - y_range[0]) * shape_buffer_pct
 
-    # Convert dates if needed
     if x_type == "date_time":
         x_values = pd.to_datetime(x_values)
+
+    # make sure everything has a period_ranges_index for ease of processing
+    if not period_ranges_index:
+        period_ranges_index = [(0, len(x_values) - 1)]
+
+    # Handle different period scenarios
+    high_or_low_all = []
+    short_runs_all = []
+    
+    # Process each period separately
+    for period_idx, (start_idx, end_idx) in enumerate(period_ranges_index):
+        period_x = x_values[start_idx:end_idx + 1]
+        period_y = y_values[start_idx:end_idx + 1]
         
-    short_runs = []
-    y_range = fig.layout.yaxis.range
-
-    if sloped:
-        upper_midrange = [
-            (mid[0], mid[1] + ((upper[1] - mid[1]) / 2))
-            for (upper, mid) in zip(npl_upper, y_xmr_func)
-        ]
-        lower_midrange = [
-            (mid[0], mid[1] - ((mid[1] - lower[1]) / 2))
-            for (lower, mid) in zip(npl_lower, y_xmr_func)
-        ]
-        run_test_upper = y_values > [el[1] for el in upper_midrange]
-        run_test_lower = y_values < [el[1] for el in lower_midrange]
-
-        shape_buffer = (y_range[1] - y_range[0]) * shape_buffer_pct
-
-        for i, el in enumerate(y_values):
-            min_i = max(0, i - 3)
-            max_i = i + 1
-            trailing_sum_upper = numpy_sum(run_test_upper[min_i:max_i])
-            trailing_sum_lower = numpy_sum(run_test_lower[min_i:max_i])
-            if trailing_sum_upper >= 3:
-                short_runs.append(
-                    zip(
-                        x_values[min_i:max_i],
-                        y_values[min_i:max_i],
-                        ["High"] * (max_i - min_i),
-                    )
-                )
-            elif trailing_sum_lower >= 3:
-                short_runs.append(
-                    zip(
-                        x_values[min_i:max_i],
-                        y_values[min_i:max_i],
-                        ["Low"] * (max_i - min_i),
-                    )
-                )
-            else:
-                pass
-
-    else:
-        # Handle both single and multiple periods
-        if isinstance(y_xmr_func, list):
-            # Create arrays for comparison based on period ranges
-            y_func_values = []
-            upper_midrange_values = []
-            lower_midrange_values = []
-            current_period = 0
-            
-            for x in x_values:
-                if period_ranges and current_period < len(period_ranges) - 1:
-                    if x >= period_ranges[current_period + 1][0]:
-                        current_period += 1
-                        
-                curr_y_xmr = y_xmr_func[current_period]
-                curr_upper = npl_upper[current_period]
-                curr_lower = npl_lower[current_period]
-                
-                upper_midrange_values.append(curr_y_xmr + ((curr_upper - curr_y_xmr) / 2))
-                lower_midrange_values.append(curr_y_xmr - ((curr_y_xmr - curr_lower) / 2))
-            
-            run_test_upper = y_values > array(upper_midrange_values)
-            run_test_lower = y_values < array(lower_midrange_values)
+        # Get comparison values for this period
+        if sloped:
+            period_mid = [el[1] for el in y_xmr_func[period_idx]]
+            period_upper = [el[1] for el in npl_upper[period_idx]]
+            period_lower = [el[1] for el in npl_lower[period_idx]]
         else:
-            upper_midrange = y_xmr_func + ((npl_upper - y_xmr_func) / 2)
-            lower_midrange = y_xmr_func - ((y_xmr_func - npl_lower) / 2)
-            run_test_upper = y_values > upper_midrange
-            run_test_lower = y_values < lower_midrange
-
-        shape_buffer = (y_range[1] - y_range[0]) * shape_buffer_pct
-
-        for i, el in enumerate(y_values):
-            min_i = max(0, i - 3)
-            max_i = i + 1
-            trailing_sum_upper = numpy_sum(run_test_upper[min_i:max_i])
-            trailing_sum_lower = numpy_sum(run_test_lower[min_i:max_i])
-            if trailing_sum_upper >= 3:
-                short_runs.append(
-                    zip(
-                        x_values[min_i:max_i],
-                        y_values[min_i:max_i],
-                        ["High"] * (max_i - min_i),
-                    )
-                )
-            elif trailing_sum_lower >= 3:
-                short_runs.append(
-                    zip(
-                        x_values[min_i:max_i],
-                        y_values[min_i:max_i],
-                        ["Low"] * (max_i - min_i),
-                    )
-                )
+            # Handle both scalar and list inputs
+            if isinstance(y_xmr_func, list):
+                period_mid = [y_xmr_func[period_idx]] * len(period_y)
+                period_upper = [npl_upper[period_idx]] * len(period_y)
+                period_lower = [npl_lower[period_idx]] * len(period_y)
             else:
-                pass
-
+                period_mid = [y_xmr_func] * len(period_y)
+                period_upper = [npl_upper] * len(period_y)
+                period_lower = [npl_lower] * len(period_y)
+        
+        # Calculate midranges
+        upper_midrange = [mid + ((upper - mid) / 2) for mid, upper in zip(period_mid, period_upper)]
+        lower_midrange = [mid - ((mid - lower) / 2) for mid, lower in zip(period_mid, period_lower)]
+        
+        # Find runs within this period
+        high_or_low = []
+        short_runs = [False]*len(period_y)
+        
+        # Determine if points are closer to limits than midline
+        for i in range(len(period_y)):
+            if period_y[i] > upper_midrange[i]:
+                high_or_low.append("High")
+            elif period_y[i] < lower_midrange[i]:
+                high_or_low.append("Low")
+            else:
+                high_or_low.append(None)
+        
+        # Detect 3 out of 4 consecutive points
+        for i in range(len(high_or_low) - 3):
+            window = high_or_low[i:i+4]
+            high_count = sum(1 for x in window if x == "High")
+            low_count = sum(1 for x in window if x == "Low")
+            if high_count >= 3 or low_count >= 3:
+                short_runs[i:i+4] = [True]*4
+        
+        high_or_low_all += high_or_low
+        short_runs_all += short_runs
+    
+    # Build paths from runs
     paths = []
-    for run in short_runs:
-        path_build_list = []
-        for i, (d, v, t) in enumerate(run):
-            path_build_list.append((d, v, t))
-
-        paths.append(path_build_list)
-
-    # combine overlapping paths
-    c_paths = combine_paths.combine_paths(paths)
-
+    current_path = []
+    current_type = None
+    
+    # Combine points into runs
+    for i, (is_run, x, y, h_l) in enumerate(zip(short_runs_all, x_values, y_values, high_or_low_all)):
+        if is_run:
+            if not current_path:  # Start of a new run
+                current_type = h_l
+                # Look back to include previous 3 points if they match
+                start_idx = max(0, i-3)
+                if sum(1 for h in high_or_low_all[start_idx:i] if h == h_l) >= 2:
+                    current_path.extend([
+                        (x_values[j], y_values[j], high_or_low_all[j])
+                        for j in range(start_idx, i)
+                    ])
+            if h_l == current_type:  # Continue current run
+                current_path.append((x, y, h_l))
+            else:  # Type changed, end current run
+                if len(current_path) >= 3:
+                    paths.append(current_path)
+                current_path = [(x, y, h_l)]
+                current_type = h_l
+        elif current_path:  # End of a run
+            if len(current_path) >= 3:
+                paths.append(current_path)
+            current_path = []
+            current_type = None
+    
+    # Add final path if it exists
+    if current_path and len(current_path) >= 3:
+        paths.append(current_path)
+    
+    # Create path strings for visualization
     path_strings = []
-    for path in c_paths:
+    for path in paths:
         path_string = ""
-        for i, el in enumerate(path):
-            d = el[0]
-            v = el[1]
+        # Draw upper edge
+        for i, (d, v, _) in enumerate(path):
+            # Convert date to numeric value if needed
+            if x_type == "date_time":
+                d = pd.Timestamp(d).timestamp() * 1000  # Convert to milliseconds
+            
             if i == 0:
                 path_string += "M {} {}".format(d, v + shape_buffer)
             else:
                 path_string += " L {} {}".format(d, v + shape_buffer)
-
-        for el in path[::-1]:
-            d = el[0]
-            v = el[1]
+        
+        # Draw lower edge
+        for d, v, _ in reversed(path):
+            # Convert date to numeric value if needed
+            if x_type == "date_time":
+                d = pd.Timestamp(d).timestamp() * 1000  # Convert to milliseconds
             path_string += " L {} {}".format(d, v - shape_buffer)
-
+        
         path_string += " Z"
-
         path_strings.append(path_string)
-
+    
+    # Create shapes for visualization
     shapes = []
     for path_string in path_strings:
-        shapes.append(
-            {
-                "fillcolor": fill_color,
-                "line": {"color": line_color, "dash": line_type, "width": line_width},
-                "name": "Short Run",
-                "opacity": opacity,
-                "path": (path_string),
-                "type": "path",
-            }
-        )
-
-    return shapes, c_paths
+        shapes.append({
+            "fillcolor": fill_color,
+            "line": {"color": line_color, "dash": line_type, "width": line_width},
+            "name": "Short Run",
+            "opacity": opacity,
+            "path": path_string,
+            "type": "path",
+        })
+    
+    return shapes, paths
 
 
 def _long_run_test(
@@ -311,162 +275,154 @@ def _long_run_test(
     line_type: str = "longdashdot",
     opacity: float = 0.2,
     shape_buffer_pct: float = 0.05,
-    period_ranges: list = None
+    period_ranges: list = None,
+    period_ranges_index: list = None,
 ) -> tuple:
     """
     Identifies "long runs", defined as 8 consecutive points above or below the mid line.
 
     Parameters:
         fig (Figure): Passed in Figure object
-        y_xmr_func (float|list): Upper moving range limit. If sloped is True, this is a list of tuples.
-        sloped (bool): Use sloping approach for limit values.
-        fill_color (str): Fill color of shape
-        line_color (str): Line color of shape
-        line_width (int): Line width of shape border
-        line_type (str): Line type of shape border
-        opacity (float): Opacity of shape fill
-        shape_buffer_pct (float): % buffer to use for shape build. For example:
-            If y-value = 100, a shape buffer of 5% would mean the lower and upper values
-            of the shape for that y-value are [95, 105].
+        y_xmr_func (float|list): Center line values (mean or median). If sloped is True or using period ranges, 
+            this is a list of values or tuples.
+        x_type (str): Type of x-axis values ('date_time', 'categorical', or 'numeric')
+        sloped (bool): Whether to use sloping approach for limit values
+        fill_color (str): Fill color for highlighting runs
+        line_color (str): Line color for run borders
+        line_width (int): Width of border lines
+        line_type (str): Type of border lines
+        opacity (float): Opacity of fill color
+        shape_buffer_pct (float): Buffer percentage for shape visualization
+        period_ranges (list): List of period range tuples
+        period_ranges_index (list): List of index range tuples for periods
 
     Returns:
-        list[dict]: List of dictionaries that represent a shape for each long run that will
-            highlight the area of the chart containing the long run.
-        list[list]: List of lists, each sublist is a path, containing a tuple that represents
-            each point in the long run.
+        tuple: (shapes, paths) where shapes are the visualization elements and paths are the point data
     """
     fig_data = fig.data
     x_values = [el for el in fig_data[0].x]
     y_values = fig_data[0].y
-
-    # Convert x_values if needed
-    if x_type == "date_time":
-        x_values = pd.to_datetime(x_values)
-
-    long_runs = []
     y_range = fig.layout.yaxis.range
     shape_buffer = (y_range[1] - y_range[0]) * shape_buffer_pct
 
-    if sloped:
-        y_func_values = [el[1] for el in y_xmr_func]
-        run_test_upper = y_values > array(y_func_values)
-        run_test_lower = y_values < array(y_func_values)
+    if x_type == "date_time":
+        x_values = pd.to_datetime(x_values)
 
-        for i, el in enumerate(y_values):
-            # Check if we have enough points to look back 7 positions
-            if i >= 7:
-                trailing_sum_upper = numpy_sum(run_test_upper[i - 7 : i + 1])
-                trailing_sum_lower = numpy_sum(run_test_lower[i - 7 : i + 1])
-            else:
-                # For the first 7 points, check all points up to current position
-                trailing_sum_upper = numpy_sum(run_test_upper[0 : i + 1])
-                trailing_sum_lower = numpy_sum(run_test_lower[0 : i + 1])
-                # Only consider it a run if we have 8 points
-                if i + 1 < 8:
-                    continue
+    # make sure everything has a period_ranges_index for ease of processing
+    if not period_ranges_index:
+        period_ranges_index = [(0, len(x_values) - 1)]
 
-            if trailing_sum_upper >= 8 or trailing_sum_lower >= 8:
-                # If we're in the first 7 points, include all points from start
-                start_idx = max(0, i - 7)
-                long_runs.append(
-                    zip(x_values[start_idx : i + 1], y_values[start_idx : i + 1])
-                )
+    # same logic, need to make this into a list as needed
+    if not isinstance(y_xmr_func, list):
+        y_xmr_func = [y_xmr_func] * len(x_values)
 
-        paths = []
-        for run in long_runs:
-            path_build_list = []
-            for i, (d, v) in enumerate(run):
-                y_value = [el[1] for el in y_xmr_func if el[0] == d]
-                path_build_list.append((d, v, "High" if v >= y_value else "Low"))
+    # Handle different period scenarios
 
-            paths.append(path_build_list)
-    else:
-        # Handle both single and multiple periods
-        if isinstance(y_xmr_func, list):
-            # Create arrays for comparison based on period ranges
-            y_func_values = []
-            current_period = 0
-            for x in x_values:
-                if period_ranges and current_period < len(period_ranges) - 1:
-                    if x >= period_ranges[current_period + 1][0]:
-                        current_period += 1
-                y_func_values.append(y_xmr_func[current_period])
-            
-            run_test_upper = y_values > array(y_func_values)
-            run_test_lower = y_values < array(y_func_values)
+    high_or_low_all = []
+    long_runs_all = []
+    
+    # Process each period separately
+    for period_idx, (start_idx, end_idx) in enumerate(period_ranges_index):
+        period_x = x_values[start_idx:end_idx + 1]
+        period_y = y_values[start_idx:end_idx + 1]
+        
+        # Get comparison value for this period
+        if sloped:
+            period_mid = [el[1] for el in y_xmr_func[period_idx]]
         else:
-            run_test_upper = y_values > y_xmr_func
-            run_test_lower = y_values < y_xmr_func
-
-        for i, el in enumerate(y_values):
-            # Check if we have enough points to look back 7 positions
-            if i >= 7:
-                trailing_sum_upper = numpy_sum(run_test_upper[i - 7 : i + 1])
-                trailing_sum_lower = numpy_sum(run_test_lower[i - 7 : i + 1])
+            period_mid = [y_xmr_func[period_idx]] * len(period_y)
+        
+        # Find runs within this period
+        high_or_low = []
+        long_runs = [False]*len(period_y)
+        
+        # Determine if points are above/below midline
+        for i in range(len(period_y)):
+            if period_y[i] > period_mid[i]:
+                high_or_low.append("High")
+            elif period_y[i] < period_mid[i]:
+                high_or_low.append("Low")
             else:
-                # For the first 7 points, check all points up to current position
-                trailing_sum_upper = numpy_sum(run_test_upper[0 : i + 1])
-                trailing_sum_lower = numpy_sum(run_test_lower[0 : i + 1])
-                # Only consider it a run if we have 8 points
-                if i + 1 < 8:
-                    continue
-
-            if trailing_sum_upper >= 8 or trailing_sum_lower >= 8:
-                # If we're in the first 7 points, include all points from start
-                start_idx = max(0, i - 7)
-                long_runs.append(
-                    zip(x_values[start_idx : i + 1], y_values[start_idx : i + 1])
-                )
-
-        paths = []
-        for run in long_runs:
-            path_build_list = []
-            for i, (d, v) in enumerate(run):
-                if isinstance(y_xmr_func, list):
-                    current_period = 0
-                    for period_start, period_end in period_ranges:
-                        if d >= period_end:
-                            current_period += 1
-                    path_build_list.append((d, v, "High" if v >= y_xmr_func[current_period] else "Low"))
-                else:
-                    path_build_list.append((d, v, "High" if v >= y_xmr_func else "Low"))
-
-            paths.append(path_build_list)
-
-    # combine overlapping paths
-    c_paths = combine_paths.combine_paths(paths)
-
+                high_or_low.append(None)
+        
+        # Detect runs of 8 or more
+        for i in range(len(high_or_low) - 7):
+            window = high_or_low[i:i+8]
+            if all(x == window[0] for x in window) and window[0] is not None:
+                long_runs[i:i+8] = [True]*8
+        
+        high_or_low_all.extend(high_or_low)
+        long_runs_all.extend(long_runs)
+    
+    # Build paths from runs
+    paths = []
+    current_path = []
+    current_type = None
+    
+    # Combine points into runs
+    for i, (is_run, x, y, h_l) in enumerate(zip(long_runs_all, x_values, y_values, high_or_low_all)):
+        if is_run:
+            if not current_path:  # Start of a new run
+                current_type = h_l
+                # Look back to include previous 7 points if they match
+                start_idx = max(0, i-7)
+                if all(h == h_l for h in high_or_low_all[start_idx:i]):
+                    current_path.extend([
+                        (x_values[j], y_values[j], high_or_low_all[j])
+                        for j in range(start_idx, i)
+                    ])
+            if h_l == current_type:  # Continue current run
+                current_path.append((x, y, h_l))
+            else:  # Type changed, end current run
+                if len(current_path) >= 8:
+                    paths.append(current_path)
+                current_path = [(x, y, h_l)]
+                current_type = h_l
+        elif current_path:  # End of a run
+            if len(current_path) >= 8:
+                paths.append(current_path)
+            current_path = []
+            current_type = None
+    
+    # Add final path if it exists
+    if current_path and len(current_path) >= 8:
+        paths.append(current_path)
+    
+    # Create path strings for visualization
     path_strings = []
-    for path in c_paths:
+    for path in paths:
         path_string = ""
-        for i, el in enumerate(path):
-            d = el[0]
-            v = el[1]
+        # Draw upper edge
+        for i, (d, v, _) in enumerate(path):
+            # Convert date to numeric value if needed
+            if x_type == "date_time":
+                d = pd.Timestamp(d).timestamp() * 1000  # Convert to milliseconds
+            
             if i == 0:
                 path_string += "M {} {}".format(d, v + shape_buffer)
             else:
                 path_string += " L {} {}".format(d, v + shape_buffer)
-
-        for el in path[::-1]:
-            d = el[0]
-            v = el[1]
+        
+        # Draw lower edge
+        for d, v, _ in reversed(path):
+            # Convert date to numeric value if needed
+            if x_type == "date_time":
+                d = pd.Timestamp(d).timestamp() * 1000  # Convert to milliseconds
             path_string += " L {} {}".format(d, v - shape_buffer)
-
+        
         path_string += " Z"
-
         path_strings.append(path_string)
-
+    
+    # Create shapes for visualization
     shapes = []
     for path_string in path_strings:
-        shapes.append(
-            {
-                "fillcolor": fill_color,
-                "line": {"color": line_color, "dash": line_type, "width": line_width},
-                "name": "Long Run",
-                "opacity": opacity,
-                "path": (path_string),
-                "type": "path",
-            }
-        )
-
-    return shapes, c_paths
+        shapes.append({
+            "fillcolor": fill_color,
+            "line": {"color": line_color, "dash": line_type, "width": line_width},
+            "name": "Long Run",
+            "opacity": opacity,
+            "path": path_string,
+            "type": "path",
+        })
+    
+    return shapes, paths
