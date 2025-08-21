@@ -111,7 +111,7 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <section id="spc_plotly" class="level1">
 <h1>spc_plotly</h1>
 <p><strong>spc_plotly</strong> is a Python helper library for creating XmR Charts according to the theories of Statistical Process Control using the Plotly library.</p>
-<p>XmR Charts allow the viewer to quickly identify signals in a data set and ignore routine variation.</p>
+<p>XmR Charts allow the viewer to quickly identify signals in a data set and ignore routine variation. The library provides advanced signal detection capabilities including anomaly detection, short runs, and long runs with support for period-based analysis and dynamic limit calculations.</p>
 <section id="installation" class="level2">
 <h2 class="anchored" data-anchor-id="installation">Installation</h2>
 <pre class="shell"><code>pip install spc-plotly</code></pre>
@@ -189,45 +189,105 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <span id="cb2-69"><a href="#cb2-69" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-70"><a href="#cb2-70" aria-hidden="true" tabindex="-1"></a>xmr_chart.xmr_chart</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <p><img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMGN2d3p3cG1heG90OGZyb2tzeWZsYmp6eXZmajd5MHJqcmhwczZwNCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/J8ECUUcN5WWwYR5vph/giphy.gif" width="500"> <!-- ![XmR Example]() --></p>
+</section>
+<section id="signal-detection" class="level2">
+<h2 class="anchored" data-anchor-id="signal-detection">Signal Detection</h2>
+<p>The library automatically detects three types of signals in your data:</p>
+<section id="anomalies" class="level3">
+<h3 class="anchored" data-anchor-id="anomalies">Anomalies</h3>
+<p>Points that fall outside the natural process limits (NPL). These represent special cause variation that requires investigation.</p>
+</section>
+<section id="short-runs" class="level3">
+<h3 class="anchored" data-anchor-id="short-runs">Short Runs</h3>
+<p>Sequences where 3 out of 4 consecutive points are closer to the natural limits than to the center line. Requirements: - All four points must be in the same period (when using period breaks) - At least 3 of the 4 points must be closer to the same limit (upper or lower) - The first point in the sequence must be closer to a natural limit than the center line - Uses period-specific limit calculations</p>
+</section>
+<section id="long-runs" class="level3">
+<h3 class="anchored" data-anchor-id="long-runs">Long Runs</h3>
+<p>Sequences of 8 or more consecutive points on the same side of the center line. Requirements: - All points must be on the same side of the center line (above or below) - All points must be in the same period (when using period breaks) - Uses period-specific limit calculations</p>
+</section>
+</section>
+<section id="period-based-analysis" class="level2">
+<h2 class="anchored" data-anchor-id="period-based-analysis">Period-Based Analysis</h2>
+<section id="period-breaks" class="level3">
+<h3 class="anchored" data-anchor-id="period-breaks">Period Breaks</h3>
+<p>Use <code>period_breaks</code> to recalculate limits at specific points in your data:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>xmr_chart <span class="op">=</span> xmr.XmR(</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    data<span class="op">=</span>data,</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    x_ser_name<span class="op">=</span><span class="st">"Period"</span>, </span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    y_ser_name<span class="op">=</span><span class="st">"Count"</span>,</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    period_breaks<span class="op">=</span>[<span class="st">"2022-06"</span>, <span class="st">"2023-01"</span>],  <span class="co"># Recalculate limits at these points</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>    date_part_resolution<span class="op">=</span><span class="st">"month"</span>,</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>    xmr_function<span class="op">=</span><span class="st">"mean"</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</section>
+<section id="period-end" class="level3">
+<h3 class="anchored" data-anchor-id="period-end">Period End</h3>
+<p>Use <code>period_end</code> to fix the calculation point for the final period:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>xmr_chart <span class="op">=</span> xmr.XmR(</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    data<span class="op">=</span>data,</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    x_ser_name<span class="op">=</span><span class="st">"Period"</span>,</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    y_ser_name<span class="op">=</span><span class="st">"Count"</span>, </span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    period_end<span class="op">=</span><span class="st">"2023-06"</span>,  <span class="co"># Use data up to this point for final period limits</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    date_part_resolution<span class="op">=</span><span class="st">"month"</span>,</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    xmr_function<span class="op">=</span><span class="st">"mean"</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</section>
+<section id="combined-usage" class="level3">
+<h3 class="anchored" data-anchor-id="combined-usage">Combined Usage</h3>
+<p>Combine both features for maximum control:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>xmr_chart <span class="op">=</span> xmr.XmR(</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    data<span class="op">=</span>data,</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    x_ser_name<span class="op">=</span><span class="st">"Period"</span>,</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    y_ser_name<span class="op">=</span><span class="st">"Count"</span>,</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    period_breaks<span class="op">=</span>[<span class="st">"2022-06"</span>],  <span class="co"># Create period break</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    period_end<span class="op">=</span><span class="st">"2023-06"</span>,       <span class="co"># Fix final period calculation point  </span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>    date_part_resolution<span class="op">=</span><span class="st">"month"</span>,</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>    xmr_function<span class="op">=</span><span class="st">"mean"</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <p>For reference, please read <a href="https://www.amazon.com/Making-Sense-Data-Donald-Wheeler/dp/0945320728">Making Sense of Data by Donald Wheeler</a> and <a href="https://www.amazon.com/Twenty-Things-You-Need-Know/dp/094532068X">Twenty Things You Need To Know</a></p>
+</section>
 <section id="sloped-limits" class="level3">
 <h3 class="anchored" data-anchor-id="sloped-limits">Sloped Limits</h3>
 <p>Some data naturally increases over time, e.g., price of some goods. When modeling this data, you should use sloped limit lines to identify signals.</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>xmr_chart <span class="op">=</span> xmr.XmR(</span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    data<span class="op">=</span>data,</span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    x_ser_name<span class="op">=</span><span class="st">"Period"</span>,</span>
-<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    y_ser_name<span class="op">=</span><span class="st">"Count"</span>,</span>
-<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    x_cutoff<span class="op">=</span><span class="st">"2023-06"</span>,</span>
-<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>    xmr_function<span class="op">=</span><span class="st">"mean"</span></span>
-<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>    sloped<span class="op">=</span><span class="va">True</span></span>
-<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>xmr_chart <span class="op">=</span> xmr.XmR(</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    data<span class="op">=</span>data,</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>    x_ser_name<span class="op">=</span><span class="st">"Period"</span>,</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>    y_ser_name<span class="op">=</span><span class="st">"Count"</span>,</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>    x_cutoff<span class="op">=</span><span class="st">"2023-06"</span>,</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>    xmr_function<span class="op">=</span><span class="st">"mean"</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>    sloped<span class="op">=</span><span class="va">True</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <p><img src="assets/XmR_Sloped_Example.png" width="500"> <!-- ![Sloped XmR Chart](assets/XmR_Sloped_Example.png) --></p>
 </section>
 <section id="use-the-median" class="level3">
 <h3 class="anchored" data-anchor-id="use-the-median">Use the Median</h3>
 <p>If your data contains extreme outliers, you can update the xmr_function parameter to “median”</p>
-<div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>xmr_chart <span class="op">=</span> xmr.XmR(</span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    data<span class="op">=</span>data,</span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    x_ser_name<span class="op">=</span><span class="st">"Period"</span>,</span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    y_ser_name<span class="op">=</span><span class="st">"Count"</span>,</span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    x_cutoff<span class="op">=</span><span class="st">"2023-06"</span>,</span>
-<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    xmr_function<span class="op">=</span><span class="st">"median"</span></span>
-<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    sloped<span class="op">=</span><span class="va">False</span></span>
-<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>xmr_chart <span class="op">=</span> xmr.XmR(</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>    data<span class="op">=</span>data,</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    x_ser_name<span class="op">=</span><span class="st">"Period"</span>,</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>    y_ser_name<span class="op">=</span><span class="st">"Count"</span>,</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>    x_cutoff<span class="op">=</span><span class="st">"2023-06"</span>,</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>    xmr_function<span class="op">=</span><span class="st">"median"</span></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>    sloped<span class="op">=</span><span class="va">False</span></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </section>
 <section id="calculate-limits-from-subset-of-data" class="level3">
 <h3 class="anchored" data-anchor-id="calculate-limits-from-subset-of-data">Calculate Limits from Subset of Data</h3>
 <p>If you want to calculate the limits from a subset of your data, use the x_cutoff and x_begin parameters.</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>xmr_chart <span class="op">=</span> xmr.XmR(</span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    data<span class="op">=</span>data,</span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    x_ser_name<span class="op">=</span><span class="st">"Period"</span>,</span>
-<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    y_ser_name<span class="op">=</span><span class="st">"Count"</span>,</span>
-<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    x_begin<span class="op">=</span><span class="st">"2022-01"</span>,</span>
-<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    x_cutoff<span class="op">=</span><span class="st">"2023-06"</span>,</span>
-<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>    xmr_function<span class="op">=</span><span class="st">"median"</span></span>
-<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>    sloped<span class="op">=</span><span class="va">False</span></span>
-<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>xmr_chart <span class="op">=</span> xmr.XmR(</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>    data<span class="op">=</span>data,</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>    x_ser_name<span class="op">=</span><span class="st">"Period"</span>,</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>    y_ser_name<span class="op">=</span><span class="st">"Count"</span>,</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>    x_begin<span class="op">=</span><span class="st">"2022-01"</span>,</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>    x_cutoff<span class="op">=</span><span class="st">"2023-06"</span>,</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>    xmr_function<span class="op">=</span><span class="st">"median"</span></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>    sloped<span class="op">=</span><span class="va">False</span></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <p>These paremeters are <em>inclusive</em>, so they will include all data between “2022-01” and “2023-06”. If no value is passed, <code>x_begin</code> and <code>x_cutoff</code> will be set to the minimum and maximum values, respectively.</p>
+</section>
+<section id="resources" class="level3">
+<h3 class="anchored" data-anchor-id="resources">Resources:</h3>
+<p>https://www.staceybarr.com/measure-up/3-essential-signals-to-look-for-in-your-kpis/</p>
 </section>
 </section>
 <section id="dependencies" class="level2">
