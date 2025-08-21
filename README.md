@@ -2,7 +2,7 @@
 
 **spc_plotly** is a Python helper library for creating XmR Charts according to the theories of Statistical Process Control using the Plotly library.
 
-XmR Charts allow the viewer to quickly identify signals in a data set and ignore routine variation.
+XmR Charts allow the viewer to quickly identify signals in a data set and ignore routine variation. The library provides advanced signal detection capabilities including anomaly detection, short runs, and long runs with support for period-based analysis and dynamic limit calculations.
 
 ## Installation
 
@@ -87,25 +87,77 @@ xmr_chart.xmr_chart
 <img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMGN2d3p3cG1heG90OGZyb2tzeWZsYmp6eXZmajd5MHJqcmhwczZwNCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/J8ECUUcN5WWwYR5vph/giphy.gif" width="500" />
 <!-- ![XmR Example]() -->
 
-For reference, please read [Making Sense of Data by Donald Wheeler](https://www.amazon.com/Making-Sense-Data-Donald-Wheeler/dp/0945320728) and [Twenty Things You Need To Know](https://www.amazon.com/Twenty-Things-You-Need-Know/dp/094532068X)
+## Signal Detection
 
+The library automatically detects three types of signals in your data:
 
-### Sloped Limits
+### Anomalies
+Points that fall outside the natural process limits (NPL). These represent special cause variation that requires investigation.
 
-Some data naturally increases over time, e.g., price of some goods. When modeling this data, you should use sloped limit lines to identify signals.
+### Short Runs
+Sequences where 3 out of 4 consecutive points are closer to the natural limits than to the center line. Requirements:
+- All four points must be in the same period (when using period breaks)
+- At least 3 of the 4 points must be closer to the same limit (upper or lower)
+- The first point in the sequence must be closer to a natural limit than the center line
+- Uses period-specific limit calculations
+
+### Long Runs  
+Sequences of 8 or more consecutive points on the same side of the center line. Requirements:
+- All points must be on the same side of the center line (above or below)
+- All points must be in the same period (when using period breaks)
+- Uses period-specific limit calculations
+
+## Period-Based Analysis
+
+### Period Breaks
+Use `period_breaks` to recalculate limits at specific points in your data:
+
+```python
+xmr_chart = xmr.XmR(
+    data=data,
+    x_ser_name="Period", 
+    y_ser_name="Count",
+    period_breaks=["2022-06", "2023-01"],  # Recalculate limits at these points
+    date_part_resolution="month",
+    xmr_function="mean"
+)
+```
+
+### Period End
+Use `period_end` to fix the calculation point for the final period:
+
+```python
+xmr_chart = xmr.XmR(
+    data=data,
+    x_ser_name="Period",
+    y_ser_name="Count", 
+    period_end="2023-06",  # Use data up to this point for final period limits
+    date_part_resolution="month",
+    xmr_function="mean"
+)
+```
+
+### Combined Usage
+Combine both features for maximum control:
 
 ```python
 xmr_chart = xmr.XmR(
     data=data,
     x_ser_name="Period",
     y_ser_name="Count",
-    x_cutoff="2023-06",
+    period_breaks=["2022-06"],  # Create period break
+    period_end="2023-06",       # Fix final period calculation point  
+    date_part_resolution="month",
     xmr_function="mean"
-    sloped=True
 )
 ```
-<img src="assets/XmR_Sloped_Example.png" width="500" />
-<!-- ![Sloped XmR Chart](assets/XmR_Sloped_Example.png) -->
+
+For reference, please read [Making Sense of Data by Donald Wheeler](https://www.amazon.com/Making-Sense-Data-Donald-Wheeler/dp/0945320728) and [Twenty Things You Need To Know](https://www.amazon.com/Twenty-Things-You-Need-Know/dp/094532068X)
+
+
+### Sloped Limits
+
+Coming soon.
 
 
 ### Use the Median
@@ -139,6 +191,20 @@ xmr_chart = xmr.XmR(
 )
 ```
 These paremeters are *inclusive*, so they will include all data between "2022-01" and "2023-06". If no value is passed, `x_begin` and `x_cutoff` will be set to the minimum and maximum values, respectively.
+
+### Resources and Statistical Significance
+
+The three signal patterns detected by this library have deep statistical foundations in Statistical Process Control (SPC) theory:
+
+**Anomalies** represent special cause variation - points that fall outside the natural process limits have less than a 0.3% probability of occurring due to common cause variation alone. When detected, they indicate that something fundamentally different happened in your process that requires investigation and action.
+
+**Long Runs** (8+ consecutive points on one side of the center line) have approximately a 0.4% probability of occurring by chance in a stable process [source](https://www.staceybarr.com/measure-up/3-essential-signals-to-look-for-in-your-kpis/#:~:text=SIGNAL%202:%20Long%20run,are%20to%20the%20Central%20Line.). As [Commoncog notes](https://commoncog.com/becoming-data-driven-first-principles/), these patterns help you distinguish between routine variation and meaningful process shifts, enabling you to "pursue knowledge" rather than react to random fluctuations.
+
+**Short Runs** (3 of 4 points closer to limits than center) indicate early process drift and are derived from the [Western Electric Rules](https://en.wikipedia.org/wiki/Western_Electric_rules) established in the 1950s for detecting non-random patterns in control charts. This pattern provides earlier detection of process changes before they become full anomalies, following Wheeler and Deming's principle that understanding variation is key to process improvement.
+
+These statistical thresholds, developed through decades of industrial application, help organizations avoid the two fundamental errors in data interpretation: seeing signals where none exist (Type I error) and missing real signals in the noise (Type II error). As documented in the [XMR manual](https://xmrit.com/manual/), this approach transforms raw data into actionable knowledge by separating predictable variation from meaningful change.
+
+For deeper understanding: [Making Sense of Data by Donald Wheeler](https://www.amazon.com/Making-Sense-Data-Donald-Wheeler/dp/0945320728), [Twenty Things You Need To Know](https://www.amazon.com/Twenty-Things-You-Need-Know/dp/094532068X), and [Commoncog's series on becoming data-driven](https://commoncog.com/becoming-data-driven-first-principles/). 
 
 ## Dependencies
 Plotly, Pandas, and Numpy
