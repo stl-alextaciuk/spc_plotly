@@ -4,6 +4,10 @@
 
 XmR Charts allow the viewer to quickly identify signals in a data set and ignore routine variation. The library provides advanced signal detection capabilities including anomaly detection, short runs, and long runs with support for period-based analysis and dynamic limit calculations.
 
+### Credit
+
+This package is forked from [Jeremy Colon's work](https://github.com/JeremyColon/spc_plotly) (thanks Jeremy!)
+
 ## Installation
 
 ```shell
