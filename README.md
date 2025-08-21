@@ -110,7 +110,7 @@ Sequences of 8 or more consecutive points on the same side of the center line. R
 ## Period-Based Analysis
 
 ### Period Breaks
-Use `period_breaks` to recalculate limits at specific points in your data:
+Use `period_breaks` to recalculate limits for specific ranges of your data:
 
 ```python
 xmr_chart = xmr.XmR(
@@ -154,12 +154,6 @@ xmr_chart = xmr.XmR(
 
 For reference, please read [Making Sense of Data by Donald Wheeler](https://www.amazon.com/Making-Sense-Data-Donald-Wheeler/dp/0945320728) and [Twenty Things You Need To Know](https://www.amazon.com/Twenty-Things-You-Need-Know/dp/094532068X)
 
-
-### Sloped Limits
-
-Coming soon.
-
-
 ### Use the Median
 
 If your data contains extreme outliers, you can update the xmr_function parameter to "median"
@@ -175,8 +169,13 @@ xmr_chart = xmr.XmR(
 )
 ```
 
-### Calculate Limits from Subset of Data
+### Sloped Limits
 
+Coming soon.
+
+### Alternative method: Calculate Limits from Subset of Data
+
+This is a legacy method of splitting data into different periods - I recommend using the `period_breaks` and `period_end` instead. 
 If you want to calculate the limits from a subset of your data, use the x_cutoff and x_begin parameters.
 
 ```python
