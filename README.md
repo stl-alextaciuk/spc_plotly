@@ -84,8 +84,64 @@ xmr_chart.signals
 
 xmr_chart.xmr_chart
 ```
+### Example gif from original implementation of this library
 <img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMGN2d3p3cG1heG90OGZyb2tzeWZsYmp6eXZmajd5MHJqcmhwczZwNCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/J8ECUUcN5WWwYR5vph/giphy.gif" width="500" />
 <!-- ![XmR Example]() -->
+
+## Data Types
+
+The library supports three types of x-axis data:
+
+### Date-Time Data
+Use `x_type="date_time"` for temporal data. Specify the resolution with `date_part_resolution`:
+
+```python
+# Monthly data
+xmr_chart = xmr.XmR(
+    data=data,
+    x_ser_name="Period",
+    y_ser_name="Count", 
+    x_type="date_time",
+    date_part_resolution="month"  # year, month, day, hour, minute, or custom
+)
+```
+
+### Numeric Data
+Use `x_type="numeric"` for ordered numerical sequences:
+
+```python
+# Sequential numeric data
+data = pd.DataFrame({
+    "sequence": [1, 2, 3, 4, 5, 6],
+    "values": [100, 102, 98, 105, 99, 101]
+})
+
+xmr_chart = xmr.XmR(
+    data=data,
+    x_ser_name="sequence", 
+    y_ser_name="values",
+    x_type="numeric"
+)
+```
+
+### Categorical Data
+Use `x_type="categorical"` for ordered categories:
+
+```python
+# Categorical data (e.g., stations, products, regions)
+data = pd.DataFrame({
+    "station": ["Station_A", "Station_B", "Station_C", "Station_D"],
+    "quality_score": [85, 87, 82, 90]
+})
+
+xmr_chart = xmr.XmR(
+    data=data,
+    x_ser_name="station",
+    y_ser_name="quality_score", 
+    x_type="categorical"
+)
+```
+
 
 ## Signal Detection
 
